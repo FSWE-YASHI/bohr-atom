@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Bohr පරමාණු ආකෘතිය — ඉදිරිපත් කිරීම</title>
+<style>
+:root{color-scheme:dark;--cyan:#42eaff;--gold:#ffd166;--ink:#102033}
+*{box-sizing:border-box}
+body{margin:0;background:#030712;color:#f4f8ff;font-family:"Nirmala UI","Iskoola Pota","Noto Sans Sinhala",system-ui,sans-serif;min-height:100vh}
+.app{width:min(100%,1360px);margin:auto;padding:16px 18px 28px}
+header{padding:4px 0 14px}
+h1{font-size:clamp(1.45rem,3vw,2.05rem);margin:0 0 4px;letter-spacing:.01em}
+h2{margin:0 0 8px;font-size:.92rem;color:#69dfff;font-weight:700}
+.sub{color:#9db4d4;font-size:.95rem;margin:0}
+.layout{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,440px);gap:14px;align-items:start}
+.stage{position:relative;border:1px solid #123c78;border-radius:24px;overflow:hidden;background:radial-gradient(ellipse at 50% 45%,#0b2b59 0%,#06142f 48%,#020817 100%);box-shadow:0 0 35px #006dff18;touch-action:none}
+canvas{display:block;width:100%;height:min(56vh,560px);min-height:380px;cursor:grab;touch-action:none}
+canvas:active{cursor:grabbing}
+.fill-cap{margin-top:10px;background:#1a1408;border:1px solid var(--gold);color:#ffe7ad;border-radius:12px;padding:10px 12px;text-align:center;font-weight:650}
+.fill-cap[hidden]{display:none}
+.controls{display:grid;gap:8px;margin-top:12px}
+.nav,.tools{display:grid;gap:8px}
+.nav{grid-template-columns:auto minmax(0,1fr) auto}
+.tools{grid-template-columns:repeat(3,minmax(0,1fr))}
+button{font:inherit;color:#eef6ff;background:linear-gradient(145deg,#1a2940,#111b2d);border:1px solid #354c6c;border-radius:13px;padding:11px 12px;min-height:48px;cursor:pointer;font-weight:650}
+button:hover{border-color:#39cfff;background:#1b3150}
+button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+button.on{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+#flat{border-color:#b8923a;color:#ffe7ad}
+#pickerBtn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;font-size:1.05rem}
+.caret{color:#9db4d4}
+.picker{position:relative}
+.menu{position:absolute;z-index:30;left:0;right:0;top:calc(100% + 6px);background:#fff;color:var(--ink);border-radius:14px;max-height:340px;overflow:auto;box-shadow:0 18px 50px #000a;border:1px solid #d5e4f5}
+.menu[hidden]{display:none}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;background:#fff;color:#102033;border:0;border-bottom:1px solid #e4eef8;border-radius:0;min-height:50px;font-weight:650;box-shadow:none;text-align:left}
+.menu button:hover{background:#e8f3ff;border-color:#e4eef8;color:#102033}
+.menu button[aria-selected="true"]{background:#d4ebff;color:#061525}
+.sym-mini{width:38px;flex:none;font-weight:800;color:#0a6ebd}
+.nm{color:#102033}
+.z-mini{margin-left:auto;color:#3d5874;font-weight:700}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin:12px 0 0;color:#d5e4f7;font-size:.95rem}
+.dot,.ring{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.ring{border:2px solid var(--gold);background:transparent}
+aside{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;display:grid;gap:8px;padding-right:4px}
+.card{border:1px solid #123c78;border-radius:18px;padding:10px 12px;background:linear-gradient(135deg,#06152e,#030b1c)}
+.theory{margin:0;color:#d5e4f7;line-height:1.45;font-size:.92rem}
+.top-theory{margin:8px 0 0;color:#b7c9e2}
+.identity{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center}
+.symbol{border:2px solid #159bff;border-radius:15px;text-align:center;padding:8px 4px 10px;box-shadow:inset 0 0 20px #087cff28}
+.atomic-number{font-size:.95rem;text-align:left;padding-left:8px;color:#b5d7ff}
+.symbol strong{font-size:2rem;display:block;line-height:1.05}
+.symbol small{color:#9ddcff;font-size:.95rem}
+.en{color:#9db4d4;font-size:.92rem}
+.conf-label{color:#69dfff;margin-top:6px;font-size:.82rem}
+.conf{font-size:1.12rem;font-weight:750;letter-spacing:.02em;line-height:1.35}
+.map{color:#b7c9e2;font-size:.88rem;line-height:1.4;margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.stats div{background:#071426;border:1px solid #1b4e86;border-radius:12px;padding:8px 10px}
+.stats .wide{grid-column:span 3}
+.stats .third{grid-column:span 2}
+.stats span,.stats em{display:block;color:#9db4d4;font-size:.75rem;font-style:normal;line-height:1.35}
+.stats b{display:block;font-size:1.4rem;line-height:1.1;font-variant-numeric:tabular-nums}
+.note-mini{color:#91a7c6;font-size:.8rem;margin:0}
+.valence{background:#1a1408;border:1px solid #ffd16688;color:#ffe3a3;border-radius:12px;padding:10px 12px;font-size:1.08rem;font-weight:700}
+.shell-row{display:grid;grid-template-columns:42px 52px 1fr auto;gap:8px;align-items:center;padding:5px 8px;border-radius:10px;margin-top:4px;background:#071426}
+.shell-row.outer{box-shadow:inset 3px 0 0 var(--gold)}
+.shell-row.live{outline:1px solid var(--gold)}
+.tag{font-weight:800}
+.shell-row b.count{font-variant-numeric:tabular-nums}
+.ok{color:#8dffa8;font-size:.82rem}
+.left{color:#ffd166;font-size:.82rem}
+.script{margin:0;padding-left:1.2rem}
+.script li{margin:3px 0;line-height:1.4}
+.script li::marker{color:#69dfff;font-weight:800}
+.script li.talk{color:#ffe7ad}
+.foot{font-size:.85rem;color:#91a7c6;line-height:1.55;margin:14px 4px 0}
+kbd{border:1px solid #35557e;border-radius:6px;padding:1px 6px;color:#d5e7ff;background:#0c1c33}
+@media(max-width:980px){
+  .layout{grid-template-columns:1fr}
+  aside{position:static;max-height:none}
+}
+@media(max-width:560px){
+  .app{padding:12px}
+  .tools{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .stats .wide,.stats .third{grid-column:span 1}
+  canvas{min-height:340px;height:54vh}
+  .shell-row{grid-template-columns:36px 46px 1fr}
+  .shell-row .left,.shell-row .ok{grid-column:3}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<h1>⚛️ 3D පරමාණු ආකෘතිය</h1>
+<p class="sub">Bohr Model · ඉදිරිපත් කිරීමට · මූලද්‍රව්‍යය මාරු කර, කවච පිරෙන විදිහ පෙන්වන්න</p>
+<p class="theory top-theory">මුලින්ම කියන්න: ඉලෙක්ට්‍රෝන න්‍යෂ්ටිය වටා කවචවල ගමන් කරයි. ඇතුළත කවචය පිරුණාට පස්සේ ඊළඟ එක පිරේ. උපරිම ගණන 2n² (K = 2, L = 8, M = 18). ප්‍රෝටෝන = ඉලෙක්ට්‍රෝන = Z. A = ප්‍රෝටෝන + නියුට්‍රෝන.</p>
+</header>
+<div class="layout">
+<div>
+<section class="stage" id="stage">
+<canvas id="atom" aria-label="Interactive 3D Bohr atom model"></canvas>
+</section>
+<div class="fill-cap" id="fillCaption" hidden></div>
+<div class="controls">
+<div class="nav">
+<button type="button" id="prev">◀ පෙර</button>
+<div class="picker" id="picker">
+<button type="button" id="pickerBtn" aria-haspopup="listbox" aria-expanded="false" aria-controls="menu"></button>
+<div class="menu" id="menu" role="listbox" hidden></div>
+</div>
+<button type="button" id="next">ඊළඟ ▶</button>
+</div>
+<div class="tools">
+<button type="button" id="toggle">ඉලෙක්ට්‍රෝන නවත්වන්න</button>
+<button type="button" id="fill">▶ කවච පිරවීම</button>
+<button type="button" id="flat">පෙළපොත් දසුන</button>
+<button type="button" id="dim" class="on">3D දසුන</button>
+<button type="button" id="auto">දර්ශනය කරකවන්න</button>
+<button type="button" id="full">⛶ මුළු තිරය</button>
+</div>
+</div>
+<div class="legend">
+<span><i class="dot" style="background:#ff4264"></i>ප්‍රෝටෝන (+)</span>
+<span><i class="dot" style="background:#7aa2ff"></i>නියුට්‍රෝන</span>
+<span><i class="dot" style="background:#42eaff"></i>ඉලෙක්ට්‍රෝන (−)</span>
+<span><i class="ring"></i>රන් පාට වළල්ල = පිටත කවචය</span>
+</div>
+</div>
+<aside>
+<section class="card">
+<div class="identity">
+<div class="symbol"><div class="atomic-number" id="atomicNo">3</div><strong id="symbol">Li</strong><small id="siName">ලිතියම්</small></div>
+<div>
+<div class="en" id="enName">Lithium</div>
+<div class="conf-label">ඉලෙක්ට්‍රෝන වින්‍යාසය</div>
+<div class="conf" id="configuration">1s² 2s¹</div>
+<div class="map" id="subshellMap"></div>
+</div>
+</div>
+<div class="stats" style="margin-top:12px">
+<div class="wide"><span>පරමාණුක ක්‍රමාංකය (Z)</span><b id="zNum">3</b><em>ප්‍රෝටෝන = ඉලෙක්ට්‍රෝන</em></div>
+<div class="wide"><span>ස්කන්ධ ක්‍රමාංකය (A)</span><b id="aNum">7</b><em id="aFormula">A = 3 + 4</em></div>
+<div class="third"><span>ප්‍රෝටෝන</span><b id="protons">3</b></div>
+<div class="third"><span>නියුට්‍රෝන</span><b id="neutrons">4</b></div>
+<div class="third"><span id="electronLabel">ඉලෙක්ට්‍රෝන</span><b id="electrons">3</b></div>
+</div>
+<p class="note-mini" style="margin-top:8px">ස්කන්ධ ක්‍රමාංකය බහුලම සමස්ථානිකය අනුවයි.</p>
+</section>
+<div class="valence" id="valence" aria-live="polite"></div>
+<section class="card">
+<h2>මේ මූලද්‍රව්‍යය කියන්න</h2>
+<ol class="script" id="script"></ol>
+</section>
+<section class="card">
+<h2>කවච</h2>
+<div id="shellTable"></div>
+</section>
+</aside>
+</div>
+<p class="foot">ඇදලා කරකවන්න · Scroll කර Zoom කරන්න · යතුරු: <kbd>←</kbd> <kbd>→</kbd> මූලද්‍රව්‍යය · <kbd>Space</kbd> ඉලෙක්ට්‍රෝන නවත්වන්න · <kbd>F</kbd> කවච පිරවීම. පෙළපොත් දසුනෙන් කවච ගණන් කරන්න. 3D දසුනෙන් ආකෘතිය කරකවන්න. මෙය ඉගෙනීම සඳහා සකස් කළ Bohr ආකෘතියකි. ඉලෙක්ට්‍රෝනවල සැබෑ ක්වොන්ටම් හැසිරීම මෙයින් නිරූපණය නොවේ.</p>
+</div>
+<script>
+(() => {
+const ORDER = ['H','He','Li','Be','B','C','N','O','F','Ne','Na'];
+const NAMES = ['K','L','M'];
+const MAX = [2,8,18];
+const SHELL_R = [0.70,1.22,1.74];
+const DATA = {
+  H:{name:'හයිඩ්‍රජන්',en:'Hydrogen',z:1,n:0,conf:'1s¹',shell:[1],story:'සරලම පරමාණුව මෙයයි. මෙයින් කවච පිරෙන අනුපිළිවෙල පටන් ගනී.'},
+  He:{name:'හීලියම්',en:'Helium',z:2,n:2,conf:'1s²',shell:[2],story:'K කවචය සම්පූර්ණ වූ පළමු උච්ච වායුව මෙයයි. පහසුවෙන් ප්‍රතික්‍රියා නොකරයි.'},
+  Li:{name:'ලිතියම්',en:'Lithium',z:3,n:4,conf:'1s² 2s¹',shell:[2,1],story:'තුන්වන ඉලෙක්ට්‍රෝනයට K කවචයේ ඉඩ නැත. ඒ නිසා L කවචය පටන් ගනී. ක්ෂාර ලෝහයකි.'},
+  Be:{name:'බෙරිලියම්',en:'Beryllium',z:4,n:5,conf:'1s² 2s²',shell:[2,2],story:'L කවචයේ ඉලෙක්ට්‍රෝන දෙකම 2s උප කවචයේය. සංයුජතාව 2යි.'},
+  B:{name:'බෝරෝන්',en:'Boron',z:5,n:6,conf:'1s² 2s² 2p¹',shell:[2,3],story:'මෙතැන සිට 2p උප කවචය පිරෙන්න පටන් ගනී. සංයුජතාව 3යි.'},
+  C:{name:'කාබන්',en:'Carbon',z:6,n:6,conf:'1s² 2s² 2p²',shell:[2,4],story:'පිටත ඉලෙක්ට්‍රෝන 4ක් නිසා බන්ධන හතරක් සෑදිය හැක.'},
+  N:{name:'නයිට්‍රජන්',en:'Nitrogen',z:7,n:7,conf:'1s² 2s² 2p³',shell:[2,5],story:'අෂ්ටකය සම්පූර්ණ කිරීමට ඉලෙක්ට්‍රෝන 3ක් ලබා ගනී. ඒ නිසා සංයුජතාව 3යි.'},
+  O:{name:'ඔක්සිජන්',en:'Oxygen',z:8,n:8,conf:'1s² 2s² 2p⁴',shell:[2,6],story:'අෂ්ටකය සම්පූර්ණ කිරීමට ඉලෙක්ට්‍රෝන 2ක් ලබා ගනී. සංයුජතාව 2යි.'},
+  F:{name:'ෆ්ලුවොරීන්',en:'Fluorine',z:9,n:10,conf:'1s² 2s² 2p⁵',shell:[2,7],story:'තව ඉලෙක්ට්‍රෝනයක් පමණක් ලැබුණොත් L කවචය සම්පූර්ණයි. ඉතා ක්‍රියාශීලී අලෝහයකි.'},
+  Ne:{name:'නියෝන්',en:'Neon',z:10,n:10,conf:'1s² 2s² 2p⁶',shell:[2,8],story:'L කවචය ඉලෙක්ට්‍රෝන 8න් සම්පූර්ණයි. මෙය උච්ච වායුවකි. පහසුවෙන් ප්‍රතික්‍රියා නොකරයි.'},
+  Na:{name:'සෝඩියම්',en:'Sodium',z:11,n:12,conf:'1s² 2s² 2p⁶ 3s¹',shell:[2,8,1],story:'L කවචය පිරුණාට පස්සේ M කවචය පටන් ගනී. සංයුජතාව 1යි. අලුත් ආවර්තයකි. M කවචයට උපරිම ඉලෙක්ට්‍රෝන 18කි.'}
+};
+
+const canvas = document.getElementById('atom');
+const ctx = canvas.getContext('2d');
+const menu = document.getElementById('menu');
+const picker = document.getElementById('picker');
+const pickerBtn = document.getElementById('pickerBtn');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let W = 0, H = 0, rx = -0.48, ry = 0.55, zoom = 1;
+let drag = false, lastX = 0, lastY = 0;
+let paused = reduce, auto = false, t = 0;
+let current = 'Li';
+let filling = false, shown = DATA.Li.z, fillAcc = 0, last = 0;
+
+function valencyOf(shells) {
+  const i = shells.length - 1;
+  const v = shells[i];
+  if (i === 0) return v === 2 ? 0 : v;
+  if (v >= 8) return 0;
+  return Math.min(v, 8 - v);
+}
+function shellSentence(shells) {
+  const bits = shells.map((c, i) => NAMES[i] + ' කවචයේ ' + c + 'ක්');
+  return 'ඉලෙක්ට්‍රෝන බෙදී ඇත්තේ ' + bits.join(', ') + '.';
+}
+function mapSentence(level) {
+  if (level === 1) return '1s යනු K කවචයයි.';
+  if (level === 2) return '1s = K කවචය. 2s සහ 2p = L කවචය.';
+  return '1s = K කවචය. 2s සහ 2p = L කවචය. 3s = M කවචය.';
+}
+function valenceSentence(shells) {
+  const i = shells.length - 1;
+  const v = shells[i];
+  const name = NAMES[i];
+  const val = valencyOf(shells);
+  if (val === 0) return name + ' කවචය සම්පූර්ණයි. පිටත ඉලෙක්ට්‍රෝන ' + v + 'ක්. සංයුජතාව 0.';
+  if (i > 0 && v > 4) return 'පිටත ' + name + ' කවචයේ ඉලෙක්ට්‍රෝන ' + v + 'ක්. අෂ්ටකයට තව ' + (8 - v) + 'ක් ඕනේ. සංයුජතාව ' + (8 - v) + '.';
+  return 'පිටත ' + name + ' කවචයේ ඉලෙක්ට්‍රෝන ' + v + 'ක්. සංයුජතාව ' + val + '.';
+}
+function visibleInShell(shells, shownCount, index) {
+  const before = shells.slice(0, index).reduce((a, b) => a + b, 0);
+  return Math.max(0, Math.min(shells[index], shownCount - before));
+}
+function currentShellIndex(shells, shownCount) {
+  if (shownCount <= 0) return -1;
+  let left = shownCount;
+  for (let s = 0; s < shells.length; s++) {
+    if (left <= shells[s]) return s;
+    left -= shells[s];
+  }
+  return shells.length - 1;
+}
+function liveCaption(e) {
+  if (!filling && shown >= e.z) return '';
+  if (shown <= 0) return 'න්‍යෂ්ටිය සූදානම්. ඉලෙක්ට්‍රෝන එකෙන් එක කවචවලට එනවා බලන්න.';
+  const s = currentShellIndex(e.shell, shown);
+  const have = visibleInShell(e.shell, shown, s);
+  return 'දැන් පිරෙන්නේ ' + NAMES[s] + ' කවචය · ' + have + '/' + MAX[s] + ' · මුළු ඉලෙක්ට්‍රෝන ' + shown + '/' + e.z;
+}
+
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(r.width * dpr));
+  const h = Math.max(1, Math.round(r.height * dpr));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  W = r.width;
+  H = r.height;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+new ResizeObserver(resize).observe(canvas);
+
+function rotate(p) {
+  const x = p[0], y = p[1], z = p[2];
+  const cy = Math.cos(ry), sy = Math.sin(ry);
+  const cx = Math.cos(rx), sx = Math.sin(rx);
+  const x1 = x * cy - z * sy;
+  const z1 = x * sy + z * cy;
+  return [x1, y * cx - z1 * sx, y * sx + z1 * cx];
+}
+function project(p) {
+  const q = rotate(p);
+  const f = 4 / (4 + q[2] * 0.35);
+  const s = Math.min(W, H) * 0.20 * zoom * f;
+  return {x: W / 2 + q[0] * s, y: H * 0.50 + q[1] * s, z: q[2], f};
+}
+function sphere(x, y, r, color) {
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.08, x, y, r);
+  g.addColorStop(0, '#ffffff');
+  g.addColorStop(0.22, color);
+  g.addColorStop(1, '#07152b');
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(1.5, r), 0, Math.PI * 2);
+  ctx.fillStyle = g;
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = color;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+function drawOrbit(rad, color, width) {
+  ctx.beginPath();
+  for (let i = 0; i <= 140; i++) {
+    const u = (i / 140) * Math.PI * 2;
+    const p = project([Math.cos(u) * rad, Math.sin(u) * rad, 0]);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = color;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+function pill(x, y, text, color) {
+  const size = Math.max(13, Math.min(W, H) * 0.03);
+  ctx.font = '700 ' + size + 'px "Nirmala UI","Iskoola Pota",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const w = ctx.measureText(text).width + 16;
+  const h = size + 10;
+  ctx.beginPath();
+  ctx.roundRect(x - w / 2, y - h / 2, w, h, 8);
+  ctx.fillStyle = 'rgba(3,10,24,.86)';
+  ctx.fill();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#f7fbff';
+  ctx.fillText(text, x, y + 0.5);
+}
+function clusterPoints(count, radius) {
+  if (count <= 0) return [];
+  if (count === 1) return [[0, 0, 0]];
+  const pts = [];
+  const ga = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < count; i++) {
+    const y = 1 - (i / (count - 1)) * 2;
+    const ring = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = ga * i;
+    pts.push([Math.cos(th) * ring * radius, y * radius, Math.sin(th) * ring * radius]);
+  }
+  return pts;
+}
+function nucleonKinds(z, n) {
+  const kinds = [];
+  let p = z, nn = n;
+  while (p > 0 || nn > 0) {
+    if (p > 0) { kinds.push('p'); p--; }
+    if (nn > 0) { kinds.push('n'); nn--; }
+  }
+  return kinds;
+}
+
+function draw() {
+  if (W < 2 || H < 2) return;
+  const e = DATA[current];
+  ctx.clearRect(0, 0, W, H);
+  const bg = ctx.createRadialGradient(W * 0.5, H * 0.46, 8, W * 0.5, H * 0.5, Math.max(W, H) * 0.72);
+  bg.addColorStop(0, '#0c3166');
+  bg.addColorStop(0.55, '#06142f');
+  bg.addColorStop(1, '#020817');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  const origin = project([0, 0, 0]);
+  const glowR = Math.min(W, H) * 0.07;
+  const glow = ctx.createRadialGradient(origin.x, origin.y, 2, origin.x, origin.y, glowR);
+  glow.addColorStop(0, 'rgba(255,70,110,.28)');
+  glow.addColorStop(1, 'rgba(255,70,110,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(origin.x, origin.y, glowR, 0, Math.PI * 2);
+  ctx.fill();
+
+  const lastShell = e.shell.length - 1;
+  const shellColor = (s) => s === lastShell ? '#ffd166' : s === 0 ? '#42eaff' : '#c084fc';
+  for (let s = 0; s < e.shell.length; s++) {
+    const vis = visibleInShell(e.shell, shown, s);
+    if (vis <= 0) continue;
+    const outer = s === lastShell;
+    drawOrbit(SHELL_R[s], shellColor(s), outer ? 2.6 : 1.6);
+  }
+
+  const total = e.z + e.n;
+  const spread = total <= 1 ? 0 : total <= 4 ? 0.11 : total <= 12 ? 0.18 : 0.24;
+  const kinds = nucleonKinds(e.z, e.n);
+  const pts = clusterPoints(total, spread);
+  const unit = Math.min(W, H);
+  const nR = total <= 2 ? Math.max(11, unit * 0.034) : total <= 8 ? Math.max(7, unit * 0.02) : total <= 16 ? Math.max(5.5, unit * 0.015) : Math.max(4.2, unit * 0.012);
+  const eR = Math.max(6, unit * 0.018);
+  const dots = [];
+  for (let i = 0; i < total; i++) {
+    const p = project(pts[i]);
+    dots.push({x: p.x, y: p.y, z: p.z, r: nR * p.f, color: kinds[i] === 'p' ? '#ff4264' : '#7aa2ff'});
+  }
+  const motion = t;
+  for (let s = 0; s < e.shell.length; s++) {
+    const count = e.shell[s];
+    const vis = visibleInShell(e.shell, shown, s);
+    const rad = SHELL_R[s];
+    const dir = s % 2 === 0 ? 1 : -1;
+    const speed = 0.42 + s * 0.18;
+    for (let j = 0; j < vis; j++) {
+      const a = (j / count) * Math.PI * 2 + motion * speed * dir;
+      const p = project([Math.cos(a) * rad, Math.sin(a) * rad, 0]);
+      dots.push({x: p.x, y: p.y, z: p.z, r: eR * p.f, color: '#42eaff'});
+    }
+  }
+  dots.sort((a, b) => b.z - a.z);
+  for (const d of dots) sphere(d.x, d.y, d.r, d.color);
+
+  let labelY = 24;
+  const labelStep = Math.max(28, Math.min(W, H) * 0.055);
+  for (let s = 0; s < e.shell.length; s++) {
+    const vis = visibleInShell(e.shell, shown, s);
+    if (vis <= 0) continue;
+    pill(86, labelY, NAMES[s] + ' · ' + vis + '/' + MAX[s], shellColor(s));
+    labelY += labelStep;
+  }
+}
+
+function render() {
+  const e = DATA[current];
+  const sym = current;
+  document.getElementById('atomicNo').textContent = e.z;
+  document.getElementById('symbol').textContent = sym;
+  document.getElementById('siName').textContent = e.name;
+  document.getElementById('enName').textContent = e.en;
+  document.getElementById('configuration').textContent = e.conf;
+  document.getElementById('subshellMap').textContent = mapSentence(e.shell.length);
+  document.getElementById('zNum').textContent = e.z;
+  document.getElementById('aNum').textContent = e.z + e.n;
+  document.getElementById('aFormula').textContent = 'A = ' + e.z + ' + ' + e.n;
+  document.getElementById('protons').textContent = e.z;
+  document.getElementById('neutrons').textContent = e.n;
+  document.getElementById('electrons').textContent = shown;
+  document.getElementById('electronLabel').textContent = filling ? 'දැන් තිරයේ ඉලෙක්ට්‍රෝන' : 'ඉලෙක්ට්‍රෝන';
+  const val = valencyOf(e.shell);
+  const outerCount = e.shell[e.shell.length - 1];
+  document.getElementById('valence').textContent = filling || shown < e.z
+    ? liveCaption(e)
+    : (val === 0 ? 'පිටත කවචය සම්පූර්ණයි · සංයුජතාව 0' : 'සංයුජතා ඉලෙක්ට්‍රෝන ' + outerCount + ' · සංයුජතාව ' + val);
+  const cap = document.getElementById('fillCaption');
+  const capText = (filling || shown < e.z) ? liveCaption(e) : '';
+  cap.textContent = capText;
+  cap.hidden = !capText;
+
+  const active = currentShellIndex(e.shell, shown);
+  document.getElementById('shellTable').innerHTML = e.shell.map((count, i) => {
+    const vis = visibleInShell(e.shell, shown, i);
+    const outer = i === e.shell.length - 1;
+    const live = filling && active === i;
+    const room = MAX[i] - vis;
+    const extra = vis === MAX[i] ? '<span class="ok">සම්පූර්ණයි</span>' : '<span class="left">තව ' + room + 'ක්</span>';
+    return '<div class="shell-row' + (outer ? ' outer' : '') + (live ? ' live' : '') + '">' +
+      '<span class="tag" style="color:' + (outer ? '#ffd166' : i === 0 ? '#42eaff' : '#c084fc') + '">' + NAMES[i] + '</span>' +
+      '<span>n = ' + (i + 1) + '</span>' +
+      '<span>උපරිම ' + MAX[i] + ' · ඉලෙක්ට්‍රෝන <b class="count">' + vis + '</b></span>' +
+      extra + '</div>';
+  }).join('');
+
+  const nLine = e.n === 0
+    ? 'නියුට්‍රෝන නැත. A = ' + e.z + ' + 0 = ' + e.z + '.'
+    : 'නියුට්‍රෝන ' + e.n + 'ක්. A = ' + e.z + ' + ' + e.n + ' = ' + (e.z + e.n) + '.';
+  const lines = [
+    e.name + ' (' + sym + '). ඉංග්‍රීසි නම ' + e.en + '.',
+    'පරමාණුක ක්‍රමාංකය Z = ' + e.z + '. ප්‍රෝටෝන ' + e.z + 'ක්, ඉලෙක්ට්‍රෝන ' + e.z + 'ක්. ' + nLine,
+    shellSentence(e.shell) + ' ඉලෙක්ට්‍රෝන වින්‍යාසය ' + e.conf + '. ' + mapSentence(e.shell.length),
+    valenceSentence(e.shell),
+    'කවච ' + e.shell.length + 'ක් ඇති නිසා මෙය ' + e.shell.length + ' වන ආවර්තයේ මූලද්‍රව්‍යයකි. ' + e.story
+  ];
+  const list = document.getElementById('script');
+  list.replaceChildren();
+  lines.forEach((text, i) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    if (i === lines.length - 1) li.className = 'talk';
+    list.appendChild(li);
+  });
+
+  pickerBtn.innerHTML = '<span>' + e.name + ' (' + sym + ')</span><span class="caret">▾</span>';
+  menu.querySelectorAll('button').forEach((btn) => {
+    btn.setAttribute('aria-selected', btn.dataset.sym === sym ? 'true' : 'false');
+  });
+  canvas.setAttribute('aria-label', e.name + ' පරමාණුව. ප්‍රෝටෝන ' + e.z + ', නියුට්‍රෝන ' + e.n + ', ඉලෙක්ට්‍රෝන ' + shown);
+  document.getElementById('toggle').textContent = paused ? 'ඉලෙක්ට්‍රෝන යවන්න' : 'ඉලෙක්ට්‍රෝන නවත්වන්න';
+  document.getElementById('fill').textContent = filling ? 'පිරවීම නවත්වන්න' : '▶ කවච පිරවීම';
+  document.getElementById('auto').textContent = auto ? 'දර්ශනය නවත්වන්න' : 'දර්ශනය කරකවන්න';
+  document.getElementById('auto').classList.toggle('on', auto);
+}
+
+function openMenu(open) {
+  menu.hidden = !open;
+  pickerBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    const sel = menu.querySelector('[aria-selected="true"]');
+    if (sel) sel.scrollIntoView({block: 'nearest'});
+  }
+}
+function markView(mode) {
+  document.getElementById('flat').classList.toggle('on', mode === 'flat');
+  document.getElementById('dim').classList.toggle('on', mode === '3d');
+}
+function setElement(sym) {
+  if (!DATA[sym]) return;
+  current = sym;
+  filling = false;
+  shown = DATA[sym].z;
+  fillAcc = 0;
+  render();
+}
+function step(dir) {
+  const i = ORDER.indexOf(current);
+  setElement(ORDER[(i + dir + ORDER.length) % ORDER.length]);
+}
+function startFill() {
+  filling = true;
+  shown = 0;
+  fillAcc = 0;
+  render();
+}
+function finishFill() {
+  filling = false;
+  shown = DATA[current].z;
+  fillAcc = 0;
+  render();
+}
+
+ORDER.forEach((sym) => {
+  const e = DATA[sym];
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.dataset.sym = sym;
+  b.setAttribute('role', 'option');
+  b.innerHTML = '<span class="sym-mini">' + sym + '</span><span class="nm">' + e.name + '</span><span class="z-mini">Z=' + e.z + '</span>';
+  menu.appendChild(b);
+});
+
+pickerBtn.addEventListener('click', () => openMenu(menu.hidden));
+menu.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button');
+  if (!btn) return;
+  setElement(btn.dataset.sym);
+  openMenu(false);
+});
+document.addEventListener('pointerdown', (ev) => {
+  if (!picker.contains(ev.target)) openMenu(false);
+});
+document.getElementById('prev').addEventListener('click', () => step(-1));
+document.getElementById('next').addEventListener('click', () => step(1));
+document.getElementById('toggle').addEventListener('click', () => { paused = !paused; render(); });
+document.getElementById('fill').addEventListener('click', () => { if (filling) finishFill(); else startFill(); });
+document.getElementById('flat').addEventListener('click', () => { rx = 0; ry = 0; zoom = 1; markView('flat'); });
+document.getElementById('dim').addEventListener('click', () => { rx = -0.48; ry = 0.55; zoom = 1; markView('3d'); });
+document.getElementById('auto').addEventListener('click', () => { auto = !auto; render(); });
+document.getElementById('full').addEventListener('click', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+});
+window.addEventListener('keydown', (ev) => {
+  if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'TEXTAREA')) return;
+  if (ev.key === 'ArrowRight') { ev.preventDefault(); step(1); }
+  else if (ev.key === 'ArrowLeft') { ev.preventDefault(); step(-1); }
+  else if (ev.key === ' ') { ev.preventDefault(); paused = !paused; render(); }
+  else if (ev.key === 'f' || ev.key === 'F') { ev.preventDefault(); if (filling) finishFill(); else startFill(); }
+  else if (ev.key === 'Escape') openMenu(false);
+});
+canvas.addEventListener('pointerdown', (ev) => {
+  drag = true;
+  lastX = ev.clientX;
+  lastY = ev.clientY;
+  markView('custom');
+  canvas.setPointerCapture(ev.pointerId);
+});
+canvas.addEventListener('pointermove', (ev) => {
+  if (!drag) return;
+  ry += (ev.clientX - lastX) * 0.008;
+  rx += (ev.clientY - lastY) * 0.008;
+  rx = Math.max(-1.25, Math.min(1.25, rx));
+  lastX = ev.clientX;
+  lastY = ev.clientY;
+});
+canvas.addEventListener('pointerup', () => { drag = false; });
+canvas.addEventListener('pointercancel', () => { drag = false; });
+canvas.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  zoom = Math.max(0.7, Math.min(1.7, zoom - ev.deltaY * 0.001));
+}, {passive: false});
+
+function loop(now) {
+  if (!last) last = now;
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (filling) {
+    fillAcc += dt;
+    if (fillAcc >= 0.48) {
+      fillAcc = 0;
+      shown += 1;
+      if (shown >= DATA[current].z) finishFill();
+      else render();
+    }
+  }
+  if (auto && !drag && !filling) ry += dt * 0.28;
+  if (!paused && !filling) t += dt;
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resize();
+render();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
